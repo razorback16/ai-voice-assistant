@@ -35,60 +35,31 @@ class Weebo:
         self.create_and_play_response()
 
     def create_and_play_response(self):
-        """Generate and play response"""
+        """Generate and play response in a pipeline"""
         futures = []
-        buffer = ""
-        chunk_size = self.config['tts']['chunk_size']
-
-        # Process response stream
-        for text in self.chat.get_response():
-            print(text, end='', flush=True)
-            buffer += text
-
-            # Find end of sentence to chunk at
-            last_punctuation = max(
-                buffer.rfind('. '),
-                buffer.rfind('? '),
-                buffer.rfind('! ')
-            )
-
-            if last_punctuation == -1:
-                continue
-
-            # Handle long chunks
-            while last_punctuation != -1 and last_punctuation >= chunk_size:
-                last_punctuation = max(
-                    buffer.rfind(', ', 0, last_punctuation),
-                    buffer.rfind('; ', 0, last_punctuation),
-                    buffer.rfind('— ', 0, last_punctuation)
-                )
-
-            if last_punctuation == -1:
-                last_punctuation = buffer.find(' ', 0, chunk_size)
-
-            # Process chunk
-            chunk_text = buffer[:last_punctuation + 1]
-            ph = self.tts.phonemize(chunk_text)
+        
+        # Process response stream sentence by sentence
+        for sentence in self.chat.get_response():
+            print(sentence, end='', flush=True)
+            
+            # Process sentence
+            ph = self.tts.phonemize(sentence)
             futures.append(
                 self.executor.submit(
                     self.tts.generate_audio,
                     ph
                 )
             )
-            buffer = buffer[last_punctuation + 1:]
-
-        # Process final chunk if any
-        if buffer:
-            ph = self.tts.phonemize(buffer)
-            print()
-            futures.append(
-                self.executor.submit(
-                    self.tts.generate_audio,
-                    ph
-                )
-            )
-
-        # Play generated audio
+            
+            # Play completed audio chunks while next sentence is being processed
+            while len(futures) > 0:  # Ensure we have at least 1 future
+                audio_data = futures[0].result()
+                self.audio.play_audio(audio_data)
+                futures.pop(0)
+        
+        print()
+        
+        # Play any remaining audio chunks
         for fut in futures:
             audio_data = fut.result()
             self.audio.play_audio(audio_data)

@@ -40,16 +40,37 @@ class ChatManager:
         )
 
         current_response = ""
+        buffer = ""
         for chunk in stream:
             text = chunk['message']['content']
             
             if len(text) == 0:
+                # Handle any remaining text in buffer
+                if buffer:
+                    cleaned_text = remove_emojis(buffer)
+                    if cleaned_text:
+                        yield cleaned_text
+                
                 cleaned_response = remove_emojis(current_response)
                 self.add_message('assistant', cleaned_response)
                 current_response = ""
+                buffer = ""
                 continue
                 
             current_response += text
-            cleaned_text = remove_emojis(text)
-            if cleaned_text:  # Only yield if there's text after removing emojis
-                yield cleaned_text
+            buffer += text
+            
+            # Split on sentence delimiters followed by space
+            sentences = re.split(r'([.!?;](?=\s|$))', buffer)
+            
+            # Process complete sentences
+            i = 0
+            while i < len(sentences) - 2:  # Keep last segment if incomplete
+                sentence = sentences[i] + (sentences[i+1] if i+1 < len(sentences) else '')
+                cleaned_text = remove_emojis(sentence)
+                if cleaned_text:
+                    yield cleaned_text
+                i += 2
+            
+            # Keep any remaining partial sentence in buffer
+            buffer = ''.join(sentences[i:])
