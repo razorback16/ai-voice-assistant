@@ -1,8 +1,7 @@
 {
     "audio": {
         "sample_rate": 24000,
-        "silence_threshold": 0.02,
-        "silence_duration": 1.5
+        "silence_duration": 1
     },
     "tts": {
         "max_phoneme_length": 510,

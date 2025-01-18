@@ -80,6 +80,7 @@ class Weebo:
         # Process final chunk if any
         if buffer:
             ph = self.tts.phonemize(buffer)
+            print()
             futures.append(
                 self.executor.submit(
                     self.tts.generate_audio,
