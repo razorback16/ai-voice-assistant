@@ -6,6 +6,7 @@ import numpy as np
 import onnxruntime
 import phonemizer
 import sounddevice as sd
+from scipy import signal
 from phonemizer.backend.espeak.wrapper import EspeakWrapper
 import espeakng_loader
 from ollama import chat
@@ -22,16 +23,16 @@ class Weebo:
 
         # text-to-speech settings
         self.MAX_PHONEME_LENGTH = 510
-        self.CHUNK_SIZE = 300         # size of text chunks for processing
-        self.SPEED = 1.2
-        self.VOICE = "am_michael"
+        self.CHUNK_SIZE = 500         # size of text chunks for processing
+        self.SPEED = 1.0
+        self.VOICE = "af_sky"
 
         # processing things
         self.MAX_THREADS = 1
 
         # ollama settings
         self.messages = []
-        self.SYSTEM_PROMPT = "Give a conversational response to the following statement or question in 1-2 sentences. The response should be natural and engaging, and the length depends on what you have to say."
+        self.SYSTEM_PROMPT = "Give a conversational response to the following statement or question in 1-2 sentences. The response should be natural and engaging, and the length depends on what you have to say. Do not use Markdown or any Emojis. Respond in plain text."
 
         # init components
         self._init_espeak()
@@ -60,7 +61,7 @@ class Weebo:
             self.voices = json.load(f)
 
         # init speech recognition model
-        self.whisper_mlx = LightningWhisperMLX(model="small", batch_size=12)
+        self.whisper_mlx = LightningWhisperMLX(model="distil-large-v3", batch_size=12)
 
     def _create_vocab(self) -> Dict[str, int]:
         # create mapping of characters/phonemes to integer tokens
@@ -131,7 +132,13 @@ class Weebo:
                 audio_segment = np.array(audio_buffer, dtype=np.float32)
 
                 if len(audio_segment) > self.SAMPLE_RATE:
-                    text = self.whisper_mlx.transcribe(audio_segment)['text']
+                    # Resample from SAMPLE_RATE to WHISPER_SAMPLE_RATE
+                    resampled_audio = signal.resample_poly(
+                        audio_segment, 
+                        self.WHISPER_SAMPLE_RATE, 
+                        self.SAMPLE_RATE
+                    )
+                    text = self.whisper_mlx.transcribe(resampled_audio)['text']
 
                     # skip empty/invalid transcriptions
                     if text.strip():
@@ -161,7 +168,7 @@ class Weebo:
     def create_and_play_response(self, prompt: str):
         # stream response from llm
         stream = chat(
-            model='llama3.2',
+            model='phi4',
             messages=[{
                 'role': 'system',
                 'content': self.SYSTEM_PROMPT

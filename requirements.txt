@@ -74,3 +74,4 @@ typing_extensions==4.12.2
 uritemplate==4.1.1
 urllib3==2.3.0
 zipp==3.21.0
+javad[extras]==0.1.0
