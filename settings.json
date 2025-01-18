@@ -1,0 +1,21 @@
+{
+    "audio": {
+        "sample_rate": 24000,
+        "silence_threshold": 0.02,
+        "silence_duration": 1.5
+    },
+    "tts": {
+        "max_phoneme_length": 510,
+        "chunk_size": 500,
+        "speed": 1.0,
+        "voice": "af_sky",
+        "model_path": "kokoro-v0_19.onnx"
+    },
+    "processing": {
+        "max_threads": 1
+    },
+    "chat": {
+        "model": "phi4",
+        "system_prompt": "Give a conversational response to the following statement or question in 1-2 sentences. The response should be natural and engaging, and the length depends on what you have to say. Do not use Markdown or any Emojis. Respond in plain text."
+    }
+}
