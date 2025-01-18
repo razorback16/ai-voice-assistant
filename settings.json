@@ -1,7 +1,6 @@
 {
     "audio": {
-        "sample_rate": 24000,
-        "silence_duration": 1
+        "silence_duration": 1.5
     },
     "tts": {
         "max_phoneme_length": 510,
@@ -15,6 +14,6 @@
     },
     "chat": {
         "model": "phi4",
-        "system_prompt": "Give a conversational response to the following statement or question in 1-2 sentences. The response should be natural and engaging, and the length depends on what you have to say. Do not use Markdown or any Emojis. Respond in plain text."
+        "system_prompt": "You are a voice assistant having a natural conversation. Respond conversationally as if speaking, typically in sentences. Keep responses interesting but natural. Never use formatting like Markdown, bullet points, or symbols like emojis - only plain conversational text. Your responses will be spoken out loud, so write as you would speak."
     }
 }
