@@ -1,4 +1,6 @@
 import json
+import queue
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from modules.audio import AudioManager
 from modules.tts import TTSManager
@@ -35,34 +37,44 @@ class Weebo:
         self.create_and_play_response()
 
     def create_and_play_response(self):
-        """Generate and play response in a pipeline"""
-        futures = []
+        """Generate and play response with parallel processing"""
+        # Create a queue for audio chunks
+        audio_queue = queue.Queue()
+        processing_complete = threading.Event()
         
-        # Process response stream sentence by sentence
-        for sentence in self.chat.get_response():
-            print(sentence, end='', flush=True)
-            
-            # Process sentence
-            ph = self.tts.phonemize(sentence)
-            futures.append(
-                self.executor.submit(
-                    self.tts.generate_audio,
-                    ph
-                )
-            )
-            
-            # Play completed audio chunks while next sentence is being processed
-            while len(futures) > 0:  # Ensure we have at least 1 future
-                audio_data = futures[0].result()
-                self.audio.play_audio(audio_data)
-                futures.pop(0)
+        def generate_audio():
+            """Generate audio chunks in a separate thread"""
+            try:
+                for sentence in self.chat.get_response():
+                    print(sentence, end='', flush=True)
+                    ph = self.tts.phonemize(sentence)
+                    audio_data = self.tts.generate_audio(ph)
+                    audio_queue.put(audio_data)
+                print()
+            finally:
+                processing_complete.set()
         
-        print()
+        def play_audio():
+            """Play audio chunks as they become available"""
+            while not (processing_complete.is_set() and audio_queue.empty()):
+                try:
+                    # Wait for audio chunks with a timeout
+                    audio_data = audio_queue.get(timeout=0.1)
+                    self.audio.play_audio(audio_data)
+                except queue.Empty:
+                    continue
         
-        # Play any remaining audio chunks
-        for fut in futures:
-            audio_data = fut.result()
-            self.audio.play_audio(audio_data)
+        # Start audio generation in a separate thread
+        generator_thread = threading.Thread(target=generate_audio)
+        generator_thread.start()
+        
+        # Start playback in another thread
+        playback_thread = threading.Thread(target=play_audio)
+        playback_thread.start()
+        
+        # Wait for both threads to complete
+        generator_thread.join()
+        playback_thread.join()
 
     def run(self):
         """Start the main application loop"""
